@@ -1,0 +1,33 @@
+version: '3.8'
+
+# 精简版基础设施 - 仅包含核心服务
+# 使用方式: docker-compose -f docker-compose.minimal.yml up -d
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: eureka-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123456}
+      MYSQL_DATABASE: mydb_dev
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: eureka-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123456}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:

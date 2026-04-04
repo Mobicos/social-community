@@ -104,6 +104,7 @@ application-*.yml
 # Database
 *.sql
 *.dump
+!init-db/*.sql
 
 # Certificates
 *.crt

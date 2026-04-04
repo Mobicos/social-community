@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: eureka-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123456}
+      MYSQL_DATABASE: mydb_dev
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: eureka-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123456}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123456}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RocketMQ NameServer
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.1.0
+    container_name: eureka-rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    environment:
+      JAVA_OPT: "-Duser.home=/home/rocketmq"
+    command: ["sh", "mqnamesrv"]
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:5.1.0
+    container_name: eureka-rocketmq-broker
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+    environment:
+      NAMESRV_ADDR: "rocketmq-namesrv:9876"
+      JAVA_OPT_EXT: "-Duser.home=/home/rocketmq -server -Xms512m -Xmx512m"
+    command: ["sh", "mqbroker", "-n", "rocketmq-namesrv:9876", "-c", "/home/rocketmq/rocketmq-5.1.0/conf/broker.conf"]
+    volumes:
+      - rocketmq_data:/home/rocketmq/store
+    depends_on:
+      - rocketmq-namesrv
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: eureka-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # FastDFS Tracker
+  fastdfs-tracker:
+    image: season/fastdfs:1.2
+    container_name: eureka-fastdfs-tracker
+    command: tracker
+    ports:
+      - "22122:22122"
+    volumes:
+      - tracker_data:/fastdfs/tracker/data
+
+  # FastDFS Storage
+  fastdfs-storage:
+    image: season/fastdfs:1.2
+    container_name: eureka-fastdfs-storage
+    command: storage
+    environment:
+      TRACKER_SERVER: "fastdfs-tracker:22122"
+    ports:
+      - "8888:8888"
+      - "23000:23000"
+    volumes:
+      - storage_data:/fastdfs/storage/data
+    depends_on:
+      - fastdfs-tracker
+
+  # RocketMQ Dashboard (可选，管理界面)
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    container_name: eureka-rocketmq-dashboard
+    ports:
+      - "8180:8080"
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=rocketmq-namesrv:9876"
+    depends_on:
+      - rocketmq-namesrv
+
+volumes:
+  mysql_data:
+  redis_data:
+  rocketmq_data:
+  es_data:
+  tracker_data:
+  storage_data:
