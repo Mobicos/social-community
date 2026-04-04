@@ -95,8 +95,6 @@ docker-compose.override.yml
 application-*.properties
 application-*.yml
 !application.yml
-!application-dev.yml
-!application-prod.yml
 
 # Environment files
 .env
