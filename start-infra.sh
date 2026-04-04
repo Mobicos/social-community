@@ -38,7 +38,7 @@ echo "✅ Redis is ready"
 
 # 检查 Elasticsearch
 echo "Checking Elasticsearch..."
-until curl -s http://localhost:9200/_cluster/health > /dev/null 2>&1; do
+until curl -s http://localhost:19200/_cluster/health > /dev/null 2>&1; do
     echo "Waiting for Elasticsearch..."
     sleep 3
 done
@@ -47,12 +47,13 @@ echo "✅ Elasticsearch is ready"
 echo ""
 echo "🎉 All services are ready!"
 echo ""
-echo "Services:"
-echo "  - MySQL:         localhost:3306 (user: root, password: ${DB_PASSWORD:-root123456})"
-echo "  - Redis:         localhost:6379 (password: ${REDIS_PASSWORD:-redis123456})"
-echo "  - RocketMQ:      localhost:9876"
-echo "  - Elasticsearch: localhost:9200"
-echo "  - FastDFS:       localhost:22122 (tracker), localhost:8888 (storage)"
+echo "Services (isolated ports):"
+echo "  - MySQL:         localhost:13306 (user: root, password: ${DB_PASSWORD:-root123456})"
+echo "  - Redis:         localhost:16379 (password: ${REDIS_PASSWORD:-redis123456})"
+echo "  - RocketMQ:      localhost:19876"
+echo "  - RocketMQ UI:   http://localhost:8180"
+echo "  - Elasticsearch: localhost:19200"
+echo "  - FastDFS:       localhost:22122 (tracker), localhost:18888 (storage)"
 echo ""
 echo "To start the application:"
 echo "  1. cd eureka-server && mvn spring-boot:run"

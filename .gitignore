@@ -91,6 +91,9 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
+# Data directories
+data/
+
 # Application configuration
 application-*.properties
 application-*.yml

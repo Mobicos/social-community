@@ -13,7 +13,7 @@ services:
       MYSQL_DATABASE: mydb_dev
       TZ: Asia/Shanghai
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
@@ -24,7 +24,7 @@ services:
     container_name: eureka-redis
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis123456}
     ports:
-      - "6379:6379"
+      - "16379:6379"
     volumes:
       - redis_data:/data
 
