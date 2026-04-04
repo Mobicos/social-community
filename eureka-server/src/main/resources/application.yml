@@ -1,0 +1,20 @@
+# Application name
+spring:
+  application:
+    name: eureka-server
+
+# Server port
+server:
+  port: 8761
+
+# Eureka configuration
+eureka:
+  client:
+    # Indicates whether to register itself with the Eureka server
+    register-with-eureka: false
+    # Indicates whether to fetch registry information from the Eureka server
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  instance:
+    hostname: localhost

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.dao.UserInfoDao">
+
+    <select id="getUserInfoById" parameterType="long" resultType="org.example.model.UserInfo">
+        SELECT *
+        FROM user_info
+        WHERE id = #{id}
+    </select>
+
+    <select id="getUserInfoByUserId" parameterType="long" resultType="org.example.model.UserInfo">
+        SELECT *
+        FROM user_info
+        WHERE userId = #{userId}
+    </select>
+
+    <insert id="insertUserInfo" parameterType="org.example.model.UserInfo">
+        INSERT INTO user_info (userId, nick, avatar, sign, gender, birth, createTime)
+        VALUES (#{userId}, #{nick}, #{avatar}, #{sign}, #{gender}, #{birth}, #{createTime})
+    </insert>
+
+    <update id="updateUserInfo" parameterType="org.example.model.UserInfo">
+        UPDATE user_info
+        SET nick       = #{nick},
+            avatar     = #{avatar},
+            sign       = #{sign},
+            gender     = #{gender},
+            birth      = #{birth},
+            updateTime = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteUserInfoById" parameterType="long">
+        DELETE
+        FROM user_info
+        WHERE id = #{id}
+    </delete>
+
+    <select id="getUserInfoByUserIds" resultType="org.example.model.UserInfo">
+        select
+        *
+        from
+        user_info
+        where
+        1=1
+        <if test="userIds != null and userIds.size > 0">
+            and userId in
+            <foreach collection="userIds" item = "userId" index="index" open="(" close=")" separator=",">
+                #{userId}
+            </foreach>
+        </if>
+    </select>
+</mapper>

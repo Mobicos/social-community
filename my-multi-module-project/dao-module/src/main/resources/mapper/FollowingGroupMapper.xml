@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.dao.FollowingGroupDao">
+
+    <select id="getGroupsByUserId" parameterType="long" resultType="org.example.model.FollowingGroup">
+        SELECT id, userId, groupName, groupType, createTime, updateTime
+        FROM following_group
+        WHERE userId = #{userId}
+    </select>
+
+    <insert id="insertFollowingGroup" parameterType="org.example.model.FollowingGroup">
+        INSERT INTO following_group (userId, groupName, groupType, createTime)
+        VALUES (#{userId}, #{groupName}, #{groupType}, #{createTime})
+    </insert>
+
+    <update id="updateFollowingGroup" parameterType="org.example.model.FollowingGroup">
+        UPDATE following_group
+        SET groupName = #{groupName}, groupType = #{groupType}, updateTime = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteFollowingGroup" parameterType="long">
+        DELETE FROM following_group WHERE id = #{id}
+    </delete>
+
+    <select id="getByGroupType" parameterType="java.lang.String" resultType="org.example.model.FollowingGroup">
+        select
+            *
+        from
+            following_group
+        where
+            `groupType` = #{groupType}
+    </select>
+
+    <select id="getByGroupId" parameterType="java.lang.Long" resultType="org.example.model.FollowingGroup">
+        select
+            *
+        from
+            following_group
+        where
+            id = #{id}
+    </select>
+</mapper>

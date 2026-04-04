@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.dao.FileInfoDao">
+
+    <!-- ResultMap for FileModel -->
+    <resultMap id="FileResultMap" type="org.example.model.FileInfo">
+        <id property="id" column="id"/>
+        <result property="fileUrl" column="file_url"/>
+        <result property="fileType" column="file_type"/>
+        <result property="fileMd5" column="file_md5"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- SQL Statements -->
+    <select id="getAllFiles" resultMap="FileResultMap">
+        SELECT * FROM file
+    </select>
+
+    <select id="getFileById" parameterType="long" resultMap="FileResultMap">
+        SELECT * FROM file WHERE id = #{id}
+    </select>
+
+    <insert id="insertFile" parameterType="org.example.model.FileInfo">
+        INSERT INTO file (file_url, file_type, file_md5, create_time)
+        VALUES (#{fileUrl}, #{fileType}, #{fileMd5}, #{createTime})
+    </insert>
+
+    <update id="updateFile" parameterType="org.example.model.FileInfo">
+        UPDATE file
+        SET file_url = #{fileUrl},
+            file_type = #{fileType},
+            file_md5 = #{fileMd5},
+            create_time = #{createTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteFile" parameterType="long">
+        DELETE FROM file WHERE id = #{id}
+    </delete>
+
+    <select id="getFileByMD5" parameterType="java.lang.String" resultMap="FileResultMap">
+        select
+            *
+        from
+            file
+        where
+            file_md5 = #{md5}
+    </select>
+
+</mapper>

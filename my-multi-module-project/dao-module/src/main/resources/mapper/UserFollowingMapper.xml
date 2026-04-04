@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.dao.UserFollowingDao">
+
+    <select id="getFollowingsByUserId" parameterType="long" resultType="org.example.model.UserFollowing">
+        SELECT id, userId, followingId, groupId, createTime, updateTime
+        FROM user_following
+        WHERE userId = #{userId}
+    </select>
+
+    <insert id="insertUserFollowing" parameterType="org.example.model.UserFollowing">
+        INSERT INTO user_following (userId, followingId, groupId)
+        VALUES (#{userId}, #{followingId}, #{groupId})
+    </insert>
+
+    <update id="updateUserFollowing" parameterType="org.example.model.UserFollowing">
+        UPDATE user_following
+        SET groupId = #{groupId}, updateTime = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteUserFollowing">
+        delete from
+            user_following
+        where
+            userId = #{userId} and followingId = #{followingId}
+    </delete>
+
+    <select id="getUserFans" parameterType="java.lang.Long" resultType="org.example.model.UserFollowing">
+        select
+            *
+        from
+            user_following
+        where
+            followingId = #{followingId}
+    </select>
+</mapper>
