@@ -15,7 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/file")
+@RequestMapping("/api/file")
 public class FastDfsTestController {
 
     @Autowired

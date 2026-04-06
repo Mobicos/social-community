@@ -24,6 +24,13 @@
   - docs/api.md API 接口规范
   - docs/deployment.md 部署指南
   - CHANGELOG.md 版本变更记录
+- 后端新增 API 端点
+  - `GET /api/userFollowing/following` 获取关注列表
+  - `GET /api/userFollowing/followers` 获取粉丝列表
+  - `DELETE /api/userFollowing/{followingId}` 取消关注
+  - `GET /api/userFollowing/recommend` 获取推荐用户
+  - `POST /api/userMoment/{id}/like` 点赞动态
+  - `POST /api/userMoment/{id}/comment` 评论动态
 
 ### 变更
 - 项目名称更改为「朋友圈社区」
@@ -33,9 +40,19 @@
   - 动态：朋友圈功能
   - 搜索：用户/动态/图片搜索
 - 后端服务目录重组至 `backend/` 目录
+- 前后端认证机制对接
+  - Token 请求头从 `Authorization: Bearer` 改为 `token`
+  - 实现双 Token（accessToken + refreshToken）认证
+  - 登录接口改用 `/api/users/login-dts`
 
 ### 修复
 - 修复 Spring Boot 2.7 与 Knife4j 兼容性问题（添加 `spring.mvc.pathmatch.matching-strategy=ant_path_matcher`）
+- 修复前端 Token 读取问题（从 zustand storage 读取）
+- 修复 Elasticsearch 搜索索引不存在时的优雅降级处理
+- 修复 RocketMQ Topic 不存在时的优雅降级处理
+- 修复文件上传接口路径（`/file/upload` → `/api/file/upload`）
+- 修复 Ant Design 6.x Statistic 组件 `valueStyle` 废弃警告
+- 移除动态发布的权限限制（P5 角色黑名单）
 
 ---
 

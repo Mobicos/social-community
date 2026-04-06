@@ -7,6 +7,7 @@ import type {
   DtsLoginResponse,
   UserMoment,
   MomentRequest,
+  UserFollowing,
 } from '@/types';
 
 // ============ 用户相关接口 ============

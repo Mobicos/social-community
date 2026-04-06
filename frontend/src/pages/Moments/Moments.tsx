@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import { useUserStore } from '@/stores';
-import { getMoments, addMoment } from '@/api';
+import { getMoments, addMoment, likeMoment, commentMoment } from '@/api';
 import type { UserMoment } from '@/types';
 
 dayjs.extend(relativeTime);
@@ -67,54 +67,61 @@ export function Moments() {
   }, []);
 
   const handleLike = async (id: number) => {
-    // 点赞功能暂未实现，仅更新 UI 状态
-    setMoments(
-      moments.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              isLiked: !m.isLiked,
-              likes: m.isLiked ? (m.likes || 0) - 1 : (m.likes || 0) + 1,
-            }
-          : m
-      )
-    );
-    message.info('点赞功能开发中');
+    try {
+      await likeMoment(id);
+      setMoments(
+        moments.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                isLiked: !m.isLiked,
+                likes: m.isLiked ? (m.likes || 0) - 1 : (m.likes || 0) + 1,
+              }
+            : m
+        )
+      );
+    } catch {
+      message.error('点赞失败');
+    }
   };
 
   const handleComment = async (momentId: number) => {
     const text = commentText[momentId];
     if (!text?.trim()) return;
 
-    // 评论功能暂未实现，仅更新 UI 状态
-    setMoments(
-      moments.map((m) =>
-        m.id === momentId
-          ? {
-              ...m,
-              comments: [
-                ...(m.comments || []),
-                {
-                  id: Date.now(),
-                  username: '我',
-                  content: text,
-                  createTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                },
-              ],
-            }
-          : m
-      )
-    );
-    setCommentText({ ...commentText, [momentId]: '' });
-    message.success('评论功能开发中');
+    try {
+      await commentMoment(momentId, text);
+      setMoments(
+        moments.map((m) =>
+          m.id === momentId
+            ? {
+                ...m,
+                comments: [
+                  ...(m.comments || []),
+                  {
+                    id: Date.now(),
+                    username: user?.userInfo?.nick || '我',
+                    content: text,
+                    createTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+                  },
+                ],
+              }
+            : m
+        )
+      );
+      setCommentText({ ...commentText, [momentId]: '' });
+      message.success('评论成功');
+    } catch {
+      message.error('评论失败');
+    }
   };
 
   const handlePublish = async () => {
     try {
       const values = await form.validateFields();
       const res = await addMoment({
-        content: values.content,
         type: 2, // 2-专栏动态
+        contentId: Date.now(), // 使用时间戳作为临时内容ID
       });
       if (res.code === '0') {
         setPublishModalVisible(false);

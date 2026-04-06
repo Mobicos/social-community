@@ -172,4 +172,14 @@ public class UserFollowingService {
 
         return followingList;
     }
+
+    /**
+     * 取消关注
+     *
+     * @param userId      当前用户ID
+     * @param followingId 被取消关注的用户ID
+     */
+    public void unfollowUser(Long userId, Long followingId) {
+        userFollowingDao.deleteUserFollowing(userId, followingId);
+    }
 }

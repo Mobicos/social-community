@@ -1,40 +1,69 @@
 import { useState, useEffect } from 'react';
-import { Card, Avatar, List, Tag, Input, Space, message, Spin, Tabs } from 'antd';
+import { Card, Avatar, List, Tag, Input, Space, message, Spin, Tabs, Button } from 'antd';
 import { UserOutlined, SearchOutlined } from '@ant-design/icons';
-import { getFollowingList } from '@/api';
-import type { User } from '@/types';
-
-interface ExtendedUser extends User {
-  followed?: boolean;
-}
+import { getFollowingList, getFollowersList, followUser, unfollowUser } from '@/api';
+import type { UserFollowing } from '@/types';
 
 export function Users() {
-  const [following, setFollowing] = useState<ExtendedUser[]>([]);
+  const [following, setFollowing] = useState<UserFollowing[]>([]);
+  const [followers, setFollowers] = useState<UserFollowing[]>([]);
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchFollowing();
+    fetchData();
   }, []);
 
-  const fetchFollowing = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await getFollowingList();
-      if (res.code === '0') {
-        setFollowing(res.data || []);
+      const [followingRes, followersRes] = await Promise.all([
+        getFollowingList(),
+        getFollowersList(),
+      ]);
+      if (followingRes.code === '0') {
+        setFollowing(followingRes.data || []);
+      }
+      if (followersRes.code === '0') {
+        setFollowers(followersRes.data || []);
       }
     } catch {
-      message.error('加载关注列表失败');
+      message.error('加载数据失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFollow = async (followingId: number) => {
+    try {
+      await followUser({ followingId });
+      message.success('关注成功');
+      fetchData();
+    } catch {
+      message.error('关注失败');
+    }
+  };
+
+  const handleUnfollow = async (followingId: number) => {
+    try {
+      await unfollowUser(followingId);
+      message.success('取消关注成功');
+      fetchData();
+    } catch {
+      message.error('取消关注失败');
     }
   };
 
   const filteredFollowing = following.filter(
     (u) =>
       (u.userInfo?.nick || '').toLowerCase().includes(searchText.toLowerCase()) ||
-      (u.email || '').toLowerCase().includes(searchText.toLowerCase())
+      String(u.followingId).includes(searchText)
+  );
+
+  const filteredFollowers = followers.filter(
+    (u) =>
+      (u.userInfo?.nick || '').toLowerCase().includes(searchText.toLowerCase()) ||
+      String(u.userId).includes(searchText)
   );
 
   if (loading) {
@@ -73,20 +102,31 @@ export function Users() {
                   ) : (
                     <List
                       dataSource={filteredFollowing}
-                      renderItem={(user) => (
-                        <List.Item>
+                      renderItem={(item) => (
+                        <List.Item
+                          actions={[
+                            <Button
+                              key="unfollow"
+                              danger
+                              size="small"
+                              onClick={() => handleUnfollow(item.followingId)}
+                            >
+                              取消关注
+                            </Button>,
+                          ]}
+                        >
                           <List.Item.Meta
-                            avatar={<Avatar src={user.userInfo?.avatar} size={56} />}
+                            avatar={<Avatar src={item.userInfo?.avatar} size={56} />}
                             title={
                               <Space>
-                                <span className="font-medium">{user.userInfo?.nick || '用户'}</span>
-                                <Tag color="blue">@{user.email || user.id}</Tag>
+                                <span className="font-medium">{item.userInfo?.nick || '用户'}</span>
+                                <Tag color="blue">@{item.followingId}</Tag>
                               </Space>
                             }
                             description={
                               <div>
                                 <div className="text-gray-500 mb-1">
-                                  {user.userInfo?.sign || '这个人很懒，什么都没写'}
+                                  {item.userInfo?.sign || '这个人很懒，什么都没写'}
                                 </div>
                               </div>
                             }
@@ -97,6 +137,66 @@ export function Users() {
                   )}
                 </Card>
               </>
+            ),
+          },
+          {
+            key: 'followers',
+            label: `我的粉丝 (${followers.length})`,
+            children: (
+              <Card>
+                {filteredFollowers.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <UserOutlined className="text-4xl mb-4" />
+                    <p>暂无粉丝</p>
+                  </div>
+                ) : (
+                  <List
+                    dataSource={filteredFollowers}
+                    renderItem={(item) => (
+                      <List.Item
+                        actions={[
+                          item.userInfo?.followed ? (
+                            <Button
+                              key="unfollow"
+                              danger
+                              size="small"
+                              onClick={() => handleUnfollow(item.userId)}
+                            >
+                              取消关注
+                            </Button>
+                          ) : (
+                            <Button
+                              key="follow"
+                              type="primary"
+                              size="small"
+                              onClick={() => handleFollow(item.userId)}
+                            >
+                              关注
+                            </Button>
+                          ),
+                        ]}
+                      >
+                        <List.Item.Meta
+                          avatar={<Avatar src={item.userInfo?.avatar} size={56} />}
+                          title={
+                            <Space>
+                              <span className="font-medium">{item.userInfo?.nick || '用户'}</span>
+                              <Tag color="blue">@{item.userId}</Tag>
+                            </Space>
+                          }
+                          description={
+                            <div>
+                              <div className="text-gray-500 mb-1">
+                                {item.userInfo?.sign || '这个人很懒，什么都没写'}
+                              </div>
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                )}
+              </Card>
             ),
           },
         ]}

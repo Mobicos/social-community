@@ -14,8 +14,10 @@ public class MessageProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageProducer.class);
 
-    @Resource
+    @Resource(required = false)
     private RocketMQTemplate rocketMQTemplate;
+
+    private boolean mqAvailable = true;
 
     /**
      * 发送字符串消息
@@ -24,15 +26,21 @@ public class MessageProducer {
      */
     public void sendMessage(String topic, String message) {
         if (!StringUtils.hasText(topic) || !StringUtils.hasText(message)) {
-            logger.error("Invalid topic or message: topic={}, message={}", topic, message);
+            logger.warn("Invalid topic or message: topic={}, message={}", topic, message);
+            return;
+        }
+
+        if (rocketMQTemplate == null || !mqAvailable) {
+            logger.debug("RocketMQ not available, skipping message: topic={}", topic);
             return;
         }
 
         try {
             rocketMQTemplate.convertAndSend(topic, message);
-            logger.info("Message sent successfully to topic: {}, message: {}", topic, message);
+            logger.debug("Message sent successfully to topic: {}", topic);
         } catch (Exception e) {
-            logger.error("Failed to send message to topic: {}, message: {}", topic, message, e);
+            logger.warn("RocketMQ not available or topic not found: {} - Message will be stored but not broadcast", e.getMessage());
+            mqAvailable = false;
         }
     }
 
@@ -43,15 +51,21 @@ public class MessageProducer {
      */
     public void sendMessage(String topic, Object message) {
         if (!StringUtils.hasText(topic) || message == null) {
-            logger.error("Invalid topic or message: topic={}, message={}", topic, message);
+            logger.warn("Invalid topic or message: topic={}, message={}", topic, message);
+            return;
+        }
+
+        if (rocketMQTemplate == null || !mqAvailable) {
+            logger.debug("RocketMQ not available, skipping message: topic={}", topic);
             return;
         }
 
         try {
             rocketMQTemplate.convertAndSend(topic, message);
-            logger.info("Message sent successfully to topic: {}, message: {}", topic, message);
+            logger.debug("Message sent successfully to topic: {}", topic);
         } catch (Exception e) {
-            logger.error("Failed to send message to topic: {}, message: {}", topic, message, e);
+            logger.warn("RocketMQ not available or topic not found: {} - Message will be stored but not broadcast", e.getMessage());
+            mqAvailable = false;
         }
     }
 
@@ -62,13 +76,21 @@ public class MessageProducer {
      */
     public void sendAsyncMessage(String topic, String message) {
         if (!StringUtils.hasText(topic) || !StringUtils.hasText(message)) {
-            logger.error("Invalid topic or message: topic={}, message={}", topic, message);
+            logger.warn("Invalid topic or message: topic={}, message={}", topic, message);
             return;
         }
 
-        rocketMQTemplate.convertAndSend(topic, message, m -> {
-            logger.info("Sending message asynchronously to topic: {}, message: {}", topic, message);
-            return m;
-        });
+        if (rocketMQTemplate == null || !mqAvailable) {
+            logger.debug("RocketMQ not available, skipping message: topic={}", topic);
+            return;
+        }
+
+        try {
+            rocketMQTemplate.convertAndSend(topic, message);
+            logger.debug("Sending message asynchronously to topic: {}", topic);
+        } catch (Exception e) {
+            logger.warn("RocketMQ not available or topic not found: {}", e.getMessage());
+            mqAvailable = false;
+        }
     }
 }
