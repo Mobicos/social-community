@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
+import { logout as apiLogout } from '@/api';
 
 interface UserState {
   user: User | null;
@@ -9,7 +10,7 @@ interface UserState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setRefreshToken: (refreshToken: string | null) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: () => boolean;
 }
 
@@ -22,10 +23,16 @@ export const useUserStore = create<UserState>()(
       setUser: (user) => set({ user }),
       setToken: (token) => set({ token }),
       setRefreshToken: (refreshToken) => set({ refreshToken }),
-      logout: () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        set({ user: null, token: null, refreshToken: null });
+      logout: async () => {
+        try {
+          await apiLogout();
+        } catch {
+          // 退出失败也清除本地状态
+        } finally {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          set({ user: null, token: null, refreshToken: null });
+        }
       },
       isAuthenticated: () => !!get().token,
     }),

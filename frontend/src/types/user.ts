@@ -92,3 +92,31 @@ export interface UploadResponse {
   url: string;
   fileId: string;
 }
+
+// 用户权限
+export interface UserAuthorities {
+  userId: number;
+  authorities: string[];
+}
+
+// 搜索书籍类型
+export interface Book {
+  id: number;
+  author: string;
+  title: string;
+  publisher: string;
+  pubtime: string;
+  price: number;
+  rating: number;
+  tags: string;
+  edition: number;
+}
+
+// 搜索视频类型
+export interface Video {
+  id: number;
+  title: string;
+  url: string;
+  pubtime: number;
+  duration: number;
+}

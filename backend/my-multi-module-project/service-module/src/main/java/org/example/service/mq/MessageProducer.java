@@ -14,7 +14,7 @@ public class MessageProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageProducer.class);
 
-    @Resource(required = false)
+    @Resource
     private RocketMQTemplate rocketMQTemplate;
 
     private boolean mqAvailable = true;

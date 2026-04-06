@@ -8,6 +8,9 @@ import type {
   UserMoment,
   MomentRequest,
   UserFollowing,
+  UserAuthorities,
+  Book,
+  Video,
 } from '@/types';
 
 // ============ 用户相关接口 ============
@@ -70,6 +73,16 @@ export function refreshAccessToken(refreshToken: string) {
   });
 }
 
+// ============ 用户权限接口 ============
+
+/**
+ * 获取当前用户权限
+ * GET /api/user-auth
+ */
+export function getUserAuthorities() {
+  return http.get<ApiResponse<UserAuthorities>>('/user-auth');
+}
+
 // ============ 用户动态接口 ============
 
 /**
@@ -86,6 +99,22 @@ export function addMoment(data: MomentRequest) {
  */
 export function getMoments() {
   return http.get<ApiResponse<UserMoment[]>>('/userMoment/upMoments');
+}
+
+/**
+ * 点赞动态
+ * POST /api/userMoment/{id}/like
+ */
+export function likeMoment(id: number) {
+  return http.post<ApiResponse<string>>(`/userMoment/${id}/like`);
+}
+
+/**
+ * 评论动态
+ * POST /api/userMoment/{id}/comment
+ */
+export function commentMoment(id: number, content: string) {
+  return http.post<ApiResponse<string>>(`/userMoment/${id}/comment`, { content });
 }
 
 // ============ 用户关注接口 ============
@@ -122,6 +151,14 @@ export function getFollowersList() {
   return http.get<ApiResponse<UserFollowing[]>>('/userFollowing/followers');
 }
 
+/**
+ * 获取推荐用户
+ * GET /api/userFollowing/recommend
+ */
+export function getRecommendUsers() {
+  return http.get<ApiResponse<unknown[]>>('/userFollowing/recommend');
+}
+
 // ============ 搜索接口 ============
 
 /**
@@ -129,7 +166,29 @@ export function getFollowersList() {
  * GET /api/search/by-author
  */
 export function searchBooksByAuthor(author: string) {
-  return http.get<ApiResponse<unknown[]>>('/search/by-author', { params: { author } });
+  return http.get<ApiResponse<Book[]>>('/search/by-author', { params: { author } });
+}
+
+/**
+ * 搜索书籍（AND 条件）
+ * GET /api/search/by-author-with-and
+ */
+export function searchBooksByAuthorWithAnd(author: string) {
+  return http.get<ApiResponse<Book[]>>('/search/by-author-with-and', { params: { author } });
+}
+
+/**
+ * 复杂搜索
+ * GET /api/search/complex-bool-search
+ */
+export function complexBoolSearch(params: {
+  author: string;
+  rating: number;
+  releaseDate: string;
+  tags: string;
+  edition: number;
+}) {
+  return http.get<ApiResponse<Book[]>>('/search/complex-bool-search', { params });
 }
 
 /**
@@ -145,7 +204,7 @@ export function searchVideos(params: {
   limit: number;
   offset: number;
 }) {
-  return http.get<ApiResponse<unknown[]>>('/search/find-videos', { params });
+  return http.get<ApiResponse<Video[]>>('/search/find-videos', { params });
 }
 
 // ============ 文件上传接口 ============
@@ -162,5 +221,66 @@ export function uploadFile(file: File) {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+  });
+}
+
+/**
+ * 文件分片
+ * POST /api/file/file-slices
+ */
+export function fileSlices(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post<void>('/file/file-slices', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+}
+
+/**
+ * 合并分片文件
+ * PUT /api/file/merge-slices
+ */
+export function mergeSlices(
+  slice: File,
+  fileMd5: string,
+  sliceNo: number,
+  totalSliceNo: number
+) {
+  const formData = new FormData();
+  formData.append('slice', slice);
+  formData.append('fileMd5', fileMd5);
+  formData.append('sliceNo', String(sliceNo));
+  formData.append('totalSliceNo', String(totalSliceNo));
+  return http.put<ApiResponse<string>>('/file/merge-slices', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+}
+
+/**
+ * 计算文件 MD5
+ * POST /api/file/md5-file
+ */
+export function getFileMD5(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post<ApiResponse<string>>('/file/md5-file', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+}
+
+/**
+ * 视频在线播放
+ * GET /api/file/video-slices
+ */
+export function viewVideoOnlineBySlices(url: string) {
+  return http.get<void>('/file/video-slices', {
+    params: { url },
+    responseType: 'blob',
   });
 }
