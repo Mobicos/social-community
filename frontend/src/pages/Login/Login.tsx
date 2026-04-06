@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, message, Tabs } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
-import { login, register } from '@/api';
+import { LockOutlined, MailOutlined, PhoneOutlined, UserOutlined } from '@ant-design/icons';
+import { login, register, getCurrentUser, getRsaPublicKey } from '@/api';
 import { useUserStore } from '@/stores';
-import type { LoginRequest, RegisterRequest } from '@/types';
+import type { LoginRequest } from '@/types';
+import forge from 'node-forge';
 
 interface LocationState {
   from?: { pathname: string };
 }
+
+// 后端硬编码的 RSA 公钥
+const BACKEND_PUBLIC_KEY = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDPIRFhtJorDVqC4LyrITnjWZABfKrZzauisnp3BNGzCWWFZ5hqtJSt39D/QSV5Wx/BWcnz+YnOzQ4xHWY6VE7Zmw9yVc4H8Y1G2lBJ4lAia7EZVlkgP3N1LHlgERIpgHnasnJoYpubM/g1Ne28EiZUHRyfO+qsuCr710vvdFL5HwIDAQAB';
 
 export function Login() {
   const navigate = useNavigate();
@@ -16,29 +20,103 @@ export function Login() {
   const { setUser, setToken } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [rsaPublicKey, setRsaPublicKey] = useState<string>('');
+
+  // 获取 RSA 公钥
+  useEffect(() => {
+    const fetchPublicKey = async () => {
+      try {
+        const res = await getRsaPublicKey();
+        if (res.code === '0') {
+          setRsaPublicKey(res.data);
+        }
+      } catch {
+        console.warn('获取公钥失败，将使用后端硬编码公钥');
+      }
+    };
+    fetchPublicKey();
+  }, []);
+
+  // 使用 node-forge 进行 RSA 加密
+  const encryptPassword = (password: string): string => {
+    try {
+      // 优先使用后端返回的公钥，否则使用硬编码的公钥
+      const publicKeyBase64 = rsaPublicKey || BACKEND_PUBLIC_KEY;
+
+      // 构造 PEM 格式的公钥
+      const pemFormattedKey = `-----BEGIN PUBLIC KEY-----\n${publicKeyBase64}\n-----END PUBLIC KEY-----`;
+
+      // 使用 node-forge 解析公钥
+      const pubKey = forge.pki.publicKeyFromPem(pemFormattedKey);
+
+      // 加密密码（使用 PKCS#1 v1.5 填充，与 Java 默认一致）
+      const encryptedBytes = pubKey.encrypt(password, 'RSAES-PKCS1-V1_5');
+
+      // 转换为 Base64
+      const encryptedBase64 = forge.util.encode64(encryptedBytes);
+      return encryptedBase64;
+    } catch (error) {
+      console.error('RSA 加密失败:', error);
+      return password; // 加密失败返回明文
+    }
+  };
 
   const handleLogin = async (values: LoginRequest) => {
     setLoading(true);
     try {
-      const res = await login(values);
-      if (res.data) {
-        setToken(res.data.token);
-        setUser(res.data.user);
+      // 加密密码
+      const encryptedPassword = encryptPassword(values.password);
+      const loginData = {
+        ...values,
+        password: encryptedPassword,
+      };
+
+      const res = await login(loginData);
+      if (res.code === '0' && res.data) {
+        // 后端返回的是 token 字符串
+        const token = res.data;
+        setToken(token);
+        localStorage.setItem('token', token);
+
+        // 获取用户信息
+        try {
+          const userRes = await getCurrentUser();
+          if (userRes.code === '0' && userRes.data) {
+            setUser(userRes.data);
+          }
+        } catch {
+          console.warn('获取用户信息失败');
+        }
+
         message.success('登录成功');
-        const from = (location.state as LocationState)?.from?.pathname || '/';
+        const from = (location.state as LocationState)?.from?.pathname || '/home';
         navigate(from, { replace: true });
       }
+    } catch {
+      // 错误已在拦截器中处理
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegister = async (values: RegisterRequest) => {
+  const handleRegister = async (values: { phone?: string; email?: string; password: string }) => {
     setLoading(true);
     try {
-      await register(values);
-      message.success('注册成功，请登录');
-      setActiveTab('login');
+      // 加密密码
+      const encryptedPassword = encryptPassword(values.password);
+      const registerData = {
+        phone: values.phone,
+        email: values.email,
+        password: encryptedPassword,
+      };
+
+      const res = await register(registerData);
+      if (res.code === '0') {
+        message.success('注册成功，请登录');
+        setActiveTab('login');
+      }
+    } catch {
+      // 错误已在拦截器中处理
     } finally {
       setLoading(false);
     }
@@ -63,10 +141,10 @@ export function Login() {
               children: (
                 <Form onFinish={handleLogin} size="large">
                   <Form.Item
-                    name="username"
-                    rules={[{ required: true, message: '请输入用户名' }]}
+                    name="phone"
+                    rules={[{ required: true, message: '请输入手机号或邮箱' }]}
                   >
-                    <Input prefix={<UserOutlined />} placeholder="用户名" />
+                    <Input prefix={<UserOutlined />} placeholder="手机号/邮箱" />
                   </Form.Item>
                   <Form.Item
                     name="password"
@@ -88,25 +166,22 @@ export function Login() {
               children: (
                 <Form onFinish={handleRegister} size="large">
                   <Form.Item
-                    name="username"
-                    rules={[{ required: true, message: '请输入用户名' }]}
+                    name="phone"
+                    rules={[{ required: true, message: '请输入手机号' }]}
                   >
-                    <Input prefix={<UserOutlined />} placeholder="用户名" />
+                    <Input prefix={<PhoneOutlined />} placeholder="手机号" />
+                  </Form.Item>
+                  <Form.Item
+                    name="email"
+                    rules={[{ required: true, message: '请输入邮箱' }]}
+                  >
+                    <Input prefix={<MailOutlined />} placeholder="邮箱" />
                   </Form.Item>
                   <Form.Item
                     name="password"
                     rules={[{ required: true, message: '请输入密码' }]}
                   >
                     <Input.Password prefix={<LockOutlined />} placeholder="密码" />
-                  </Form.Item>
-                  <Form.Item name="nickname">
-                    <Input prefix={<UserOutlined />} placeholder="昵称（选填）" />
-                  </Form.Item>
-                  <Form.Item name="email">
-                    <Input prefix={<MailOutlined />} placeholder="邮箱（选填）" />
-                  </Form.Item>
-                  <Form.Item name="phone">
-                    <Input prefix={<PhoneOutlined />} placeholder="手机号（选填）" />
                   </Form.Item>
                   <Form.Item>
                     <Button type="primary" htmlType="submit" loading={loading} block>

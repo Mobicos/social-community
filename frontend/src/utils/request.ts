@@ -35,10 +35,10 @@ request.interceptors.response.use(
       return response;
     }
 
-    // 业务逻辑错误处理
-    if (data.code && data.code !== 200) {
-      message.error(data.message || '请求失败');
-      return Promise.reject(new Error(data.message || '请求失败'));
+    // 业务逻辑错误处理 - 后端使用 code: "0" 表示成功
+    if (data.code && data.code !== '0') {
+      message.error(data.msg || '请求失败');
+      return Promise.reject(new Error(data.msg || '请求失败'));
     }
 
     return data;

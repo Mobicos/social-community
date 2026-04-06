@@ -1,30 +1,23 @@
 import { useState } from 'react';
-import { Card, Input, Button, List, Avatar, Tag, Empty, Spin, Tabs, Image } from 'antd';
-import { SearchOutlined, UserOutlined, PictureOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Card, Input, Button, List, Avatar, Tag, Empty, Spin, Tabs, message } from 'antd';
+import { SearchOutlined, PictureOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
+import { searchBooksByAuthor, searchVideos } from '@/api';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
 interface SearchResult {
   id: number;
-  type: 'user' | 'moment' | 'image';
+  type: 'book' | 'video';
   title: string;
   content: string;
-  avatar?: string;
-  images?: string[];
+  author?: string;
+  rating?: number;
   createTime: string;
 }
-
-// 模拟搜索结果
-const mockResults: SearchResult[] = [
-  { id: 1, type: 'user', title: '张三', content: '热爱生活，享受每一天', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1', createTime: '2024-01-15' },
-  { id: 2, type: 'moment', title: '张三', content: '今天天气真好，出去走走 🌞', images: ['https://picsum.photos/200/150?random=10'], createTime: '2024-01-15 12:00:00' },
-  { id: 3, type: 'user', title: '李四', content: '代码改变世界', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2', createTime: '2024-01-14' },
-  { id: 4, type: 'image', title: '风景照', content: '周末爬山拍的', images: ['https://picsum.photos/200/150?random=11', 'https://picsum.photos/200/150?random=12'], createTime: '2024-01-14 17:30:00' },
-];
 
 export function Search() {
   const [keyword, setKeyword] = useState('');
@@ -34,14 +27,63 @@ export function Search() {
   const [activeTab, setActiveTab] = useState('all');
 
   const handleSearch = async () => {
-    if (!keyword.trim()) return;
+    if (!keyword.trim()) {
+      message.warning('请输入搜索关键词');
+      return;
+    }
 
     setLoading(true);
-    // 模拟 API 调用
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setResults(mockResults.filter((r) => r.title.includes(keyword) || r.content.includes(keyword)));
-    setLoading(false);
-    setSearched(true);
+    try {
+      // 搜索书籍（按作者搜索）
+      const booksRes = await searchBooksByAuthor(keyword);
+      const searchResults: SearchResult[] = [];
+
+      if (booksRes.code === '0' && booksRes.data) {
+        booksRes.data.forEach((book: unknown) => {
+          const b = book as Record<string, unknown>;
+          searchResults.push({
+            id: b.id as number,
+            type: 'book',
+            title: (b.title as string) || '未知书名',
+            content: (b.author as string) || '未知作者',
+            author: b.author as string,
+            rating: b.rating as number,
+            createTime: (b.createTime as string) || dayjs().format('YYYY-MM-DD'),
+          });
+        });
+      }
+
+      // 搜索视频
+      const videosRes = await searchVideos({
+        keyword: keyword,
+        pubtime_begin_s: 0,
+        pubtime_end_s: Date.now() / 1000,
+        order: 'desc',
+        duration: 0,
+        limit: 10,
+        offset: 0,
+      });
+
+      if (videosRes.code === '0' && videosRes.data) {
+        videosRes.data.forEach((video: unknown) => {
+          const v = video as Record<string, unknown>;
+          searchResults.push({
+            id: v.id as number,
+            type: 'video',
+            title: (v.title as string) || '未知视频',
+            content: (v.description as string) || '暂无描述',
+            createTime: (v.createTime as string) || dayjs().format('YYYY-MM-DD'),
+          });
+        });
+      }
+
+      setResults(searchResults);
+      setLoading(false);
+      setSearched(true);
+    } catch {
+      message.error('搜索失败');
+      setLoading(false);
+    }
   };
 
   const filteredResults =
@@ -49,11 +91,9 @@ export function Search() {
 
   const renderIcon = (type: string) => {
     switch (type) {
-      case 'user':
-        return <UserOutlined className="text-blue-500" />;
-      case 'moment':
-        return <FileTextOutlined className="text-green-500" />;
-      case 'image':
+      case 'book':
+        return <FileTextOutlined className="text-blue-500" />;
+      case 'video':
         return <PictureOutlined className="text-purple-500" />;
       default:
         return null;
@@ -68,7 +108,7 @@ export function Search() {
         <div className="flex gap-4">
           <Input
             size="large"
-            placeholder="搜索用户、动态、图片..."
+            placeholder="搜索书籍（作者）、视频..."
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onPressEnter={handleSearch}
@@ -87,9 +127,8 @@ export function Search() {
           onChange={setActiveTab}
           items={[
             { key: 'all', label: `全部 (${results.length})` },
-            { key: 'user', label: `用户 (${results.filter((r) => r.type === 'user').length})` },
-            { key: 'moment', label: `动态 (${results.filter((r) => r.type === 'moment').length})` },
-            { key: 'image', label: `图片 (${results.filter((r) => r.type === 'image').length})` },
+            { key: 'book', label: `书籍 (${results.filter((r) => r.type === 'book').length})` },
+            { key: 'video', label: `视频 (${results.filter((r) => r.type === 'video').length})` },
           ]}
         />
       )}
@@ -107,30 +146,27 @@ export function Search() {
                 <List.Item>
                   <List.Item.Meta
                     avatar={
-                      item.avatar ? (
-                        <Avatar src={item.avatar} size={48} />
-                      ) : (
-                        <Avatar icon={renderIcon(item.type)} size={48} className="bg-gray-100" />
-                      )
+                      <Avatar icon={renderIcon(item.type)} size={48} className="bg-gray-100" />
                     }
                     title={
                       <span>
                         {item.title}
-                        <Tag color={item.type === 'user' ? 'blue' : item.type === 'moment' ? 'green' : 'purple'} className="ml-2">
-                          {item.type === 'user' ? '用户' : item.type === 'moment' ? '动态' : '图片'}
+                        <Tag color={item.type === 'book' ? 'blue' : 'purple'} className="ml-2">
+                          {item.type === 'book' ? '书籍' : '视频'}
                         </Tag>
                       </span>
                     }
                     description={
                       <div>
+                        <div>
+                          {item.type === 'book' && item.author && (
+                            <span className="text-gray-500 mr-2">作者：{item.author}</span>
+                          )}
+                          {item.type === 'book' && item.rating !== undefined && (
+                            <span className="text-yellow-500">★ {item.rating}</span>
+                          )}
+                        </div>
                         <div>{item.content}</div>
-                        {item.images && item.images.length > 0 && (
-                          <div className="mt-2 flex gap-2">
-                            {item.images.map((img, idx) => (
-                              <Image key={idx} src={img} width={60} height={60} className="object-cover rounded" />
-                            ))}
-                          </div>
-                        )}
                         <div className="text-xs text-gray-400 mt-1">{dayjs(item.createTime).fromNow()}</div>
                       </div>
                     }

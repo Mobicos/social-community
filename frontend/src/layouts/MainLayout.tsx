@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Avatar, Button, Space } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, Space } from 'antd';
 import {
   UserOutlined,
   HomeOutlined,
@@ -95,8 +95,8 @@ export function MainLayout() {
           <Space>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div className="flex items-center cursor-pointer hover:bg-gray-50 px-3 py-2 rounded-lg">
-                <Avatar icon={<UserOutlined />} className="bg-blue-500" />
-                <span className="ml-2 text-gray-700">{user?.nickname || user?.username || '用户'}</span>
+                <Avatar src={user?.userInfo?.avatar} icon={<UserOutlined />} className="bg-blue-500" />
+                <span className="ml-2 text-gray-700">{user?.userInfo?.nick || '用户'}</span>
               </div>
             </Dropdown>
           </Space>

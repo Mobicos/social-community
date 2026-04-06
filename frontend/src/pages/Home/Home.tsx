@@ -1,17 +1,85 @@
-import { Card, Row, Col, Statistic } from 'antd';
+import { useState, useEffect } from 'react';
+import { Card, Row, Col, Statistic, Spin } from 'antd';
 import { UserOutlined, LikeOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
+import { useUserStore } from '@/stores';
+import { getFollowingList, getFollowersList, getMoments } from '@/api';
+
+interface Stats {
+  following: number;
+  followers: number;
+  moments: number;
+  likes: number;
+}
 
 export function Home() {
+  const { user } = useUserStore();
+  const [stats, setStats] = useState<Stats>({
+    following: 0,
+    followers: 0,
+    moments: 0,
+    likes: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [followingRes, followersRes, momentsRes] = await Promise.all([
+          getFollowingList(),
+          getFollowersList(),
+          getMoments(),
+        ]);
+
+        if (followingRes.code === '0') {
+          setStats(prev => ({
+            ...prev,
+            following: followingRes.data?.length || 0,
+          }));
+        }
+
+        if (followersRes.code === '0') {
+          setStats(prev => ({
+            ...prev,
+            followers: followersRes.data?.length || 0,
+          }));
+        }
+
+        if (momentsRes.code === '0') {
+          setStats(prev => ({
+            ...prev,
+            moments: momentsRes.data?.length || 0,
+          }));
+        }
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
     <div>
-      <h2 className="text-xl font-bold mb-6">我的动态</h2>
+      <h2 className="text-xl font-bold mb-6">
+        {user?.userInfo?.nick || '欢迎'}，你的数据概览
+      </h2>
 
       <Row gutter={[16, 16]}>
         <Col span={6}>
           <Card hoverable>
             <Statistic
-              title="我的好友"
-              value={128}
+              title="我的关注"
+              value={stats.following}
               prefix={<UserOutlined className="text-blue-500" />}
               valueStyle={{ color: '#1890ff' }}
             />
@@ -20,18 +88,8 @@ export function Home() {
         <Col span={6}>
           <Card hoverable>
             <Statistic
-              title="获赞数"
-              value={2560}
-              prefix={<LikeOutlined className="text-red-500" />}
-              valueStyle={{ color: '#ff4d4f' }}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card hoverable>
-            <Statistic
-              title="动态数"
-              value={86}
+              title="我的粉丝"
+              value={stats.followers}
               prefix={<TeamOutlined className="text-green-500" />}
               valueStyle={{ color: '#52c41a' }}
             />
@@ -40,10 +98,20 @@ export function Home() {
         <Col span={6}>
           <Card hoverable>
             <Statistic
-              title="关注数"
-              value={512}
-              prefix={<UserOutlined className="text-purple-500" />}
-              valueStyle={{ color: '#722ed1' }}
+              title="动态数"
+              value={stats.moments}
+              prefix={<SearchOutlined className="text-orange-500" />}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card hoverable>
+            <Statistic
+              title="获赞数"
+              value={stats.likes}
+              prefix={<LikeOutlined className="text-red-500" />}
+              valueStyle={{ color: '#ff4d4f' }}
             />
           </Card>
         </Col>
