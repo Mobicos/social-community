@@ -128,4 +128,48 @@ public class UserFollowingService {
 
         return fanList;
     }
+
+    /**
+     * 获取用户的关注列表
+     *
+     * @param userId 用户ID
+     * @return 关注列表
+     */
+    public List<UserFollowing> getFollowings(Long userId) {
+        // 获取当前用户的关注列表
+        List<UserFollowing> followingList = userFollowingDao.getFollowingsByUserId(userId);
+
+        // 提取关注的用户ID集合
+        Set<Long> followingIdSet = followingList.stream()
+                .map(UserFollowing::getFollowingId)
+                .collect(Collectors.toSet());
+
+        // 获取被关注用户的用户信息列表
+        List<UserInfo> userInfoList = new ArrayList<>();
+        if (!followingIdSet.isEmpty()) {
+            userInfoList = userService.getUserInfoByUserIds(followingIdSet);
+        }
+
+        // 将用户信息列表转换为 Map，便于快速查找
+        Map<Long, UserInfo> userInfoMap = userInfoList.stream()
+                .collect(Collectors.toMap(UserInfo::getUserId, userInfo -> userInfo));
+
+        // 获取当前用户的粉丝列表，用于判断是否互相关注
+        List<UserFollowing> fanList = userFollowingDao.getUserFans(userId);
+        Set<Long> fanIdSet = fanList.stream()
+                .map(UserFollowing::getUserId)
+                .collect(Collectors.toSet());
+
+        // 填充关注的用户信息，并标记是否互相关注
+        for (UserFollowing following : followingList) {
+            UserInfo userInfo = userInfoMap.get(following.getFollowingId());
+            if (userInfo != null) {
+                following.setUserInfo(userInfo);
+                // 如果粉丝列表中也包含该用户，则表示互相关注
+                following.getUserInfo().setFollowed(fanIdSet.contains(following.getFollowingId()));
+            }
+        }
+
+        return followingList;
+    }
 }

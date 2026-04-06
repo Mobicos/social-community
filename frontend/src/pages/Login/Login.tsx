@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, message, Tabs } from 'antd';
 import { LockOutlined, MailOutlined, PhoneOutlined, UserOutlined } from '@ant-design/icons';
-import { login, register, getCurrentUser, getRsaPublicKey } from '@/api';
+import { loginDts, register, getCurrentUser, getRsaPublicKey } from '@/api';
 import { useUserStore } from '@/stores';
 import type { LoginRequest } from '@/types';
 import forge from 'node-forge';
@@ -17,7 +17,7 @@ const BACKEND_PUBLIC_KEY = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDPIRFhtJorDVqC
 export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setUser, setToken } = useUserStore();
+  const { setUser, setToken, setRefreshToken } = useUserStore();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
   const [rsaPublicKey, setRsaPublicKey] = useState<string>('');
@@ -71,12 +71,13 @@ export function Login() {
         password: encryptedPassword,
       };
 
-      const res = await login(loginData);
+      const res = await loginDts(loginData);
       if (res.code === '0' && res.data) {
-        // 后端返回的是 token 字符串
-        const token = res.data;
-        setToken(token);
-        localStorage.setItem('token', token);
+        const { accessToken, refreshToken } = res.data;
+        setToken(accessToken);
+        setRefreshToken(refreshToken);
+        localStorage.setItem('token', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
 
         // 获取用户信息
         try {

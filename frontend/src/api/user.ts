@@ -126,7 +126,7 @@ export function unfollowUser(followingId: number) {
  * GET /api/userFollowing/following
  */
 export function getFollowingList() {
-  return http.get<ApiResponse<User[]>>('/userFollowing/following');
+  return http.get<ApiResponse<UserFollowing[]>>('/userFollowing/following');
 }
 
 /**
@@ -134,7 +134,7 @@ export function getFollowingList() {
  * GET /api/userFollowing/followers
  */
 export function getFollowersList() {
-  return http.get<ApiResponse<User[]>>('/userFollowing/followers');
+  return http.get<ApiResponse<UserFollowing[]>>('/userFollowing/followers');
 }
 
 /**

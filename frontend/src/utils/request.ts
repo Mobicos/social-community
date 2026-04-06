@@ -13,10 +13,29 @@ const request: AxiosInstance = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
-    // 从 localStorage 获取 token
-    const token = localStorage.getItem('token');
+    // 优先从 localStorage 直接获取，其次从 zustand storage 获取
+    let token = localStorage.getItem('token');
+    let refreshToken = localStorage.getItem('refreshToken');
+
+    // 如果直接获取不到，尝试从 zustand storage 获取
+    if (!token) {
+      const userStorage = localStorage.getItem('user-storage');
+      if (userStorage) {
+        try {
+          const parsed = JSON.parse(userStorage);
+          token = parsed?.state?.token || null;
+          refreshToken = parsed?.state?.refreshToken || null;
+        } catch {
+          // ignore parse error
+        }
+      }
+    }
+
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.token = token;
+    }
+    if (refreshToken) {
+      config.headers.refreshToken = refreshToken;
     }
     return config;
   },

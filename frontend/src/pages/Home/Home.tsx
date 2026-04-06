@@ -81,7 +81,7 @@ export function Home() {
               title="我的关注"
               value={stats.following}
               prefix={<UserOutlined className="text-blue-500" />}
-              valueStyle={{ color: '#1890ff' }}
+              styles={{ content: { color: '#1890ff' } }}
             />
           </Card>
         </Col>
@@ -91,7 +91,7 @@ export function Home() {
               title="我的粉丝"
               value={stats.followers}
               prefix={<TeamOutlined className="text-green-500" />}
-              valueStyle={{ color: '#52c41a' }}
+              styles={{ content: { color: '#52c41a' } }}
             />
           </Card>
         </Col>
@@ -101,7 +101,7 @@ export function Home() {
               title="动态数"
               value={stats.moments}
               prefix={<SearchOutlined className="text-orange-500" />}
-              valueStyle={{ color: '#faad14' }}
+              styles={{ content: { color: '#faad14' } }}
             />
           </Card>
         </Col>
@@ -111,7 +111,7 @@ export function Home() {
               title="获赞数"
               value={stats.likes}
               prefix={<LikeOutlined className="text-red-500" />}
-              valueStyle={{ color: '#ff4d4f' }}
+              styles={{ content: { color: '#ff4d4f' } }}
             />
           </Card>
         </Col>

@@ -77,6 +77,8 @@ export interface UserFollowing {
   followingId: number;
   groupId: number;
   createTime: string;
+  updateTime?: string;
+  userInfo?: UserInfo;
 }
 
 // 搜索相关类型
