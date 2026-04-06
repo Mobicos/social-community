@@ -23,6 +23,7 @@
     <select id="getUserByPhoneOrEmail" parameterType="map" resultType="org.example.model.User">
         SELECT * FROM user
         WHERE phone = #{phone} OR email = #{email}
+        LIMIT 1
     </select>
 
     <insert id="insertUser" parameterType="org.example.model.User" useGeneratedKeys="true" keyProperty="id">
