@@ -88,22 +88,6 @@ export function getMoments() {
   return http.get<ApiResponse<UserMoment[]>>('/userMoment/upMoments');
 }
 
-/**
- * 点赞动态
- * POST /api/userMoment/{id}/like
- */
-export function likeMoment(id: number) {
-  return http.post<ApiResponse<string>>(`/userMoment/${id}/like`, null);
-}
-
-/**
- * 评论动态
- * POST /api/userMoment/{id}/comment
- */
-export function commentMoment(id: number, content: string) {
-  return http.post<ApiResponse<string>>(`/userMoment/${id}/comment`, { content });
-}
-
 // ============ 用户关注接口 ============
 
 /**
@@ -138,14 +122,6 @@ export function getFollowersList() {
   return http.get<ApiResponse<UserFollowing[]>>('/userFollowing/followers');
 }
 
-/**
- * 获取推荐用户
- * GET /api/userFollowing/recommend
- */
-export function getRecommendUsers() {
-  return http.get<ApiResponse<User[]>>('/userFollowing/recommend');
-}
-
 // ============ 搜索接口 ============
 
 /**
@@ -177,11 +153,12 @@ export function searchVideos(params: {
 /**
  * 上传图片
  * POST /api/file/upload
+ * 返回文件路径字符串
  */
 export function uploadFile(file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return http.post<ApiResponse<{ url: string; fileId: string }>>('/file/upload', formData, {
+  return http.post<ApiResponse<string>>('/file/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

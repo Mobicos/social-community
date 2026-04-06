@@ -10,26 +10,62 @@ const request: AxiosInstance = axios.create({
   },
 });
 
+// 获取存储的 token
+function getStoredTokens(): { token: string | null; refreshToken: string | null } {
+  let token = localStorage.getItem('token');
+  let refreshToken = localStorage.getItem('refreshToken');
+
+  // 如果直接获取不到，尝试从 zustand storage 获取
+  if (!token) {
+    const userStorage = localStorage.getItem('user-storage');
+    if (userStorage) {
+      try {
+        const parsed = JSON.parse(userStorage);
+        token = parsed?.state?.token || null;
+        refreshToken = parsed?.state?.refreshToken || null;
+      } catch {
+        // ignore parse error
+      }
+    }
+  }
+
+  return { token, refreshToken };
+}
+
+// 保存 token
+function saveTokens(token: string, refreshToken: string) {
+  localStorage.setItem('token', token);
+  localStorage.setItem('refreshToken', refreshToken);
+
+  // 同步更新 zustand storage
+  const userStorage = localStorage.getItem('user-storage');
+  if (userStorage) {
+    try {
+      const parsed = JSON.parse(userStorage);
+      parsed.state = parsed.state || {};
+      parsed.state.token = token;
+      parsed.state.refreshToken = refreshToken;
+      localStorage.setItem('user-storage', JSON.stringify(parsed));
+    } catch {
+      // ignore
+    }
+  }
+}
+
+// Token 刷新状态
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
+
+// 通知所有订阅者
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((callback) => callback(token));
+  refreshSubscribers = [];
+}
+
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
-    // 优先从 localStorage 直接获取，其次从 zustand storage 获取
-    let token = localStorage.getItem('token');
-    let refreshToken = localStorage.getItem('refreshToken');
-
-    // 如果直接获取不到，尝试从 zustand storage 获取
-    if (!token) {
-      const userStorage = localStorage.getItem('user-storage');
-      if (userStorage) {
-        try {
-          const parsed = JSON.parse(userStorage);
-          token = parsed?.state?.token || null;
-          refreshToken = parsed?.state?.refreshToken || null;
-        } catch {
-          // ignore parse error
-        }
-      }
-    }
+    const { token, refreshToken } = getStoredTokens();
 
     if (token) {
       config.headers.token = token;
@@ -56,6 +92,28 @@ request.interceptors.response.use(
 
     // 业务逻辑错误处理 - 后端使用 code: "0" 表示成功
     if (data.code && data.code !== '0') {
+      // Token 过期，尝试刷新
+      if (data.msg === 'Token过期！' || data.code === '555') {
+        const { refreshToken } = getStoredTokens();
+        if (refreshToken && !isRefreshing) {
+          isRefreshing = true;
+          return refreshTokenRequest(refreshToken)
+            .then((newToken) => {
+              // 重试原请求
+              response.config.headers.token = newToken;
+              return request(response.config);
+            })
+            .catch(() => {
+              // 刷新失败，跳转登录
+              clearTokensAndRedirect();
+              return Promise.reject(new Error('Token 刷新失败'));
+            })
+            .finally(() => {
+              isRefreshing = false;
+            });
+        }
+      }
+
       message.error(data.msg || '请求失败');
       return Promise.reject(new Error(data.msg || '请求失败'));
     }
@@ -69,9 +127,7 @@ request.interceptors.response.use(
       switch (status) {
         case 401:
           message.error('登录已过期，请重新登录');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          clearTokensAndRedirect();
           break;
         case 403:
           message.error('没有权限访问');
@@ -91,6 +147,31 @@ request.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// 刷新 Token 请求
+async function refreshTokenRequest(refreshToken: string): Promise<string> {
+  const response = await axios.post('/api/users/refresh-access-token', null, {
+    headers: { refreshToken },
+  });
+
+  if (response.data.code === '0' && response.data.data) {
+    const newToken = response.data.data;
+    const { refreshToken: newRefreshToken } = getStoredTokens();
+    saveTokens(newToken, newRefreshToken || refreshToken);
+    onTokenRefreshed(newToken);
+    return newToken;
+  }
+
+  throw new Error('Token 刷新失败');
+}
+
+// 清除 Token 并跳转登录
+function clearTokensAndRedirect() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user-storage');
+  window.location.href = '/login';
+}
 
 // 封装请求方法
 export const http = {

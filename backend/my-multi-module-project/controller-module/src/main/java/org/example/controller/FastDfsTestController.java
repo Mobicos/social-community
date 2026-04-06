@@ -28,10 +28,10 @@ public class FastDfsTestController {
     private FileService fileService;
 
     @PostMapping("/upload")
-    public String uploadFile(@RequestPart MultipartFile file) throws IOException {
+    public JsonResponse<String> uploadFile(@RequestPart MultipartFile file) throws IOException {
         StorePath storePath = fastFileStorageClient.uploadFile(file.getInputStream(), file.getSize(),
                 FilenameUtils.getExtension(file.getOriginalFilename()), null);
-        return storePath.getFullPath();
+        return new JsonResponse<>(storePath.getFullPath());
     }
 
     /**

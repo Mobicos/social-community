@@ -64,10 +64,8 @@ export interface UserMoment {
 
 // 动态发布请求
 export interface MomentRequest {
-  content: string;
-  images?: string[];
-  type?: number;
-  contentId?: number;
+  type: number;
+  contentId: number;
 }
 
 // 用户关注

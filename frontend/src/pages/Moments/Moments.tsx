@@ -1,58 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Card, Avatar, List, Button, Input, Image, Tooltip, Modal, Form, message, Spin } from 'antd';
-import { SendOutlined, LikeOutlined, LikeFilled, CommentOutlined } from '@ant-design/icons';
+import { Card, Avatar, List, Button, message, Spin } from 'antd';
+import { SendOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import { useUserStore } from '@/stores';
-import { getMoments, addMoment, likeMoment, commentMoment } from '@/api';
+import { getMoments, addMoment } from '@/api';
 import type { UserMoment } from '@/types';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
-interface ExtendedMoment extends UserMoment {
-  nickname?: string;
-  avatar?: string;
-  content?: string;
-  images?: string[];
-  likes?: number;
-  isLiked?: boolean;
-  comments?: Comment[];
-  displayContent?: string;
-}
-
-interface Comment {
-  id: number;
-  username: string;
-  content: string;
-  createTime: string;
-}
-
 export function Moments() {
   const { user } = useUserStore();
-  const [moments, setMoments] = useState<ExtendedMoment[]>([]);
+  const [moments, setMoments] = useState<UserMoment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [publishModalVisible, setPublishModalVisible] = useState(false);
-  const [commentText, setCommentText] = useState<Record<number, string>>({});
-  const [form] = Form.useForm();
+  const [publishing, setPublishing] = useState(false);
 
   const fetchMoments = async () => {
     setLoading(true);
     try {
       const res = await getMoments();
       if (res.code === '0') {
-        // 将后端返回的数据转换为前端需要的格式
-        const formattedMoments = res.data.map((m: UserMoment) => ({
-          ...m,
-          nickname: user?.userInfo?.nick || '用户',
-          avatar: user?.userInfo?.avatar || '',
-          displayContent: '动态内容',
-          likes: 0,
-          isLiked: false,
-          comments: [],
-        }));
-        setMoments(formattedMoments);
+        setMoments(res.data || []);
       }
     } catch {
       message.error('获取动态失败');
@@ -63,74 +33,24 @@ export function Moments() {
 
   useEffect(() => {
     fetchMoments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLike = async (id: number) => {
-    try {
-      await likeMoment(id);
-      setMoments(
-        moments.map((m) =>
-          m.id === id
-            ? {
-                ...m,
-                isLiked: !m.isLiked,
-                likes: m.isLiked ? (m.likes || 0) - 1 : (m.likes || 0) + 1,
-              }
-            : m
-        )
-      );
-    } catch {
-      message.error('点赞失败');
-    }
-  };
-
-  const handleComment = async (momentId: number) => {
-    const text = commentText[momentId];
-    if (!text?.trim()) return;
-
-    try {
-      await commentMoment(momentId, text);
-      setMoments(
-        moments.map((m) =>
-          m.id === momentId
-            ? {
-                ...m,
-                comments: [
-                  ...(m.comments || []),
-                  {
-                    id: Date.now(),
-                    username: user?.userInfo?.nick || '我',
-                    content: text,
-                    createTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                  },
-                ],
-              }
-            : m
-        )
-      );
-      setCommentText({ ...commentText, [momentId]: '' });
-      message.success('评论成功');
-    } catch {
-      message.error('评论失败');
-    }
-  };
-
   const handlePublish = async () => {
+    setPublishing(true);
     try {
-      const values = await form.validateFields();
       const res = await addMoment({
-        type: 2, // 2-专栏动态
-        contentId: Date.now(), // 使用时间戳作为临时内容ID
+        type: 2,
+        contentId: Date.now(),
       });
+
       if (res.code === '0') {
-        setPublishModalVisible(false);
-        form.resetFields();
         message.success('发布成功');
         fetchMoments();
       }
     } catch {
       message.error('发布失败');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -146,7 +66,12 @@ export function Moments() {
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-xl font-bold">动态</h2>
-        <Button type="primary" icon={<SendOutlined />} onClick={() => setPublishModalVisible(true)}>
+        <Button
+          type="primary"
+          icon={<SendOutlined />}
+          onClick={handlePublish}
+          loading={publishing}
+        >
           发布动态
         </Button>
       </div>
@@ -161,97 +86,24 @@ export function Moments() {
           renderItem={(moment) => (
             <Card className="mb-4" key={moment.id}>
               <div className="flex gap-3">
-                <Avatar src={moment.avatar} size={48} />
+                <Avatar src={user?.userInfo?.avatar} size={48} />
                 <div className="flex-1">
-                  <div className="font-medium text-gray-800">{moment.nickname || '用户'}</div>
-                  <div className="text-xs text-gray-400">{dayjs(moment.createTime).fromNow()}</div>
+                  <div className="font-medium text-gray-800">
+                    {user?.userInfo?.nick || '用户'}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {dayjs(moment.createTime).fromNow()}
+                  </div>
                 </div>
               </div>
 
-              {moment.displayContent && (
-                <div className="mt-3 text-gray-700 leading-relaxed">{moment.displayContent}</div>
-              )}
-
-              {moment.images && moment.images.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Image.PreviewGroup>
-                    {moment.images.map((img, idx) => (
-                      <Image
-                        key={idx}
-                        src={img}
-                        width={120}
-                        height={120}
-                        className="object-cover rounded-lg"
-                      />
-                    ))}
-                  </Image.PreviewGroup>
-                </div>
-              )}
-
-              <div className="mt-4 flex items-center gap-6 text-gray-500">
-                <Tooltip title={moment.isLiked ? '取消点赞' : '点赞'}>
-                  <span
-                    className={`cursor-pointer flex items-center gap-1 ${moment.isLiked ? 'text-red-500' : 'hover:text-red-500'}`}
-                    onClick={() => handleLike(moment.id)}
-                  >
-                    {moment.isLiked ? <LikeFilled /> : <LikeOutlined />}
-                    <span>{moment.likes || 0}</span>
-                  </span>
-                </Tooltip>
-                <span className="flex items-center gap-1">
-                  <CommentOutlined />
-                  <span>{moment.comments?.length || 0}</span>
-                </span>
-              </div>
-
-              {moment.comments && moment.comments.length > 0 && (
-                <div className="mt-4 bg-gray-50 rounded-lg p-3">
-                  {moment.comments.map((comment) => (
-                    <div key={comment.id} className="mb-2 last:mb-0">
-                      <span className="text-blue-600 font-medium">{comment.username}</span>
-                      <span className="text-gray-500">：{comment.content}</span>
-                      <span className="text-xs text-gray-400 ml-2">
-                        {dayjs(comment.createTime).fromNow()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-3 flex gap-2">
-                <Input
-                  placeholder="写评论..."
-                  value={commentText[moment.id] || ''}
-                  onChange={(e) => setCommentText({ ...commentText, [moment.id]: e.target.value })}
-                  onPressEnter={() => handleComment(moment.id)}
-                />
-                <Button type="primary" onClick={() => handleComment(moment.id)}>
-                  发送
-                </Button>
+              <div className="mt-3 text-gray-700">
+                动态 #{moment.contentId}
               </div>
             </Card>
           )}
         />
       )}
-
-      <Modal
-        title="发布动态"
-        open={publishModalVisible}
-        onOk={handlePublish}
-        onCancel={() => setPublishModalVisible(false)}
-        okText="发布"
-        cancelText="取消"
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="content"
-            label="内容"
-            rules={[{ required: true, message: '请输入动态内容' }]}
-          >
-            <Input.TextArea rows={4} placeholder="分享你的想法..." maxLength={500} showCount />
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 }

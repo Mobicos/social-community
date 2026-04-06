@@ -1,14 +1,14 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Avatar, Space } from 'antd';
+import { Layout, Menu, Dropdown, Avatar, Space, message } from 'antd';
 import {
   UserOutlined,
   HomeOutlined,
-  SettingOutlined,
   LogoutOutlined,
   SearchOutlined,
   FileImageOutlined,
 } from '@ant-design/icons';
 import { useUserStore } from '@/stores';
+import { logout as logoutApi } from '@/api';
 
 const { Header, Content, Sider } = Layout;
 
@@ -44,8 +44,14 @@ export function MainLayout() {
     navigate(key);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // 即使后端退出失败，也清除本地状态
+    }
     logout();
+    message.success('已退出登录');
     navigate('/login');
   };
 
@@ -55,12 +61,6 @@ export function MainLayout() {
       icon: <UserOutlined />,
       label: '个人中心',
       onClick: () => navigate('/profile'),
-    },
-    {
-      key: 'settings',
-      icon: <SettingOutlined />,
-      label: '设置',
-      onClick: () => navigate('/settings'),
     },
     {
       type: 'divider' as const,

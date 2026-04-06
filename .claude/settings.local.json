@@ -13,7 +13,9 @@
       "mcp__chrome-devtools__get_network_request",
       "mcp__chrome-devtools__evaluate_script",
       "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

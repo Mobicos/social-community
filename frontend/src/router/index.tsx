@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/layouts';
 import { ProtectedRoute } from '@/components';
-import { Login, Home, Users, Moments, Search, NotFound } from '@/pages';
+import { Login, Home, Users, Moments, Search, NotFound, Profile } from '@/pages';
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +35,10 @@ export const router = createBrowserRouter([
       {
         path: 'search',
         element: <Search />,
+      },
+      {
+        path: 'profile',
+        element: <Profile />,
       },
     ],
   },
